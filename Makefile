@@ -1,12 +1,24 @@
+CC = gcc
 CFLAGS = -Wall -Wextra -std=c11
+LDFLAGS = -lcrypto
 
-all: filechain
+TARGET = filechain
 
-filechain: src/main.c
-	gcc $(CFLAGS) src/main.c -o filechain
+SRC = \
+	src/main.c \
+	src/cli.c \
+	src/commands.c \
+	src/file_utils.c \
+	src/hash.c
 
-run: filechain
-	./filechain
+all: $(TARGET)
+
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) $(SRC) -o $(TARGET) $(LDFLAGS)
+
+run: $(TARGET)
+	./$(TARGET)
 
 clean:
-	rm -f filechain
+	rm -f $(TARGET)
+	rm -rf .filechain
