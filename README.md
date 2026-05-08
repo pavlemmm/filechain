@@ -1,22 +1,12 @@
 # FileChain
 
-FileChain is a simple file versioning project written in **C**.
+FileChain is a project written in **C** that implements a **blockchain-based file versioning system**.
 
-It scans a folder, calculates a `SHA-256` hash for each file, stores changed file snapshots in `.filechain/objects/`, and records every change in a blockchain-style history file. It works a bit like Git.
+The idea of the project is to use blockchain principles to track file changes inside a folder. Every new or modified version of a file is recorded as a new block in the chain. It also works a bit like Git.
 
-## Files
+It is not only storing file versions, but also linking those versions through hashes. Each block stores its own hash and the hash of the previous block, which creates a chain of changes.
 
-```text
-src/
-  main.c
-  chain.c
-  history.c
-  storage.c
-  util.c
-  chain.h
-  util.h
-  internal.h
-```
+To keep the system clean and readable, the full file content is not written directly into the history file. Instead, FileChain stores only the important metadata in the chain, while the actual saved versions are kept as separate snapshot objects.
 
 Generated data:
 
@@ -59,6 +49,8 @@ Restore an older version:
 ./filechain restore <file> <hash>
 ```
 
+After a scan, `index.txt` stores the latest known hash for each tracked file, `chain.txt` stores the history of changes, and `objects/` stores the saved snapshots named by their hash values.
+
 ## Example
 
 ```bash
@@ -82,13 +74,17 @@ object .filechain/objects/2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68
 
 ## How It Works
 
-When you run `scan`:
+When you run `scan`, the program does the following:
 
-1. the program reads all regular files in the selected folder
-2. it calculates a `SHA-256` hash for each file
-3. it compares the new hash with the last saved hash from `index.txt`
-4. if the file changed, it saves a snapshot in `.filechain/objects/`
-5. it appends a new block to `chain.txt`
+1. it goes through all regular files in the selected folder
+2. it reads the content of each file
+3. it calculates a `SHA-256` hash for that content
+4. it compares the new hash with the last saved hash from `index.txt`
+5. if the hash is different, it treats the file as a new version
+6. it saves a snapshot in `.filechain/objects/`
+7. it appends a new block to `chain.txt`
+
+This means that every detected change becomes a new block in the blockchain history. Because each block contains both `prev_hash` and `block_hash`, the history is linked together as a chain rather than as a simple list.
 
 Each block stores:
 
@@ -98,6 +94,8 @@ Each block stores:
 - previous block hash
 - current block hash
 - object path
+
+The `restore` command uses the saved object snapshot and copies it back to the selected file path, which makes it possible to return to an older version.
 
 ## Build Notes
 
