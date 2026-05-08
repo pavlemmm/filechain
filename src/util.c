@@ -42,10 +42,3 @@ char *read_file(const char *path, size_t *size) {
     *size = (size_t)n;
   return buf;
 }
-
-int is_text(const char *s, size_t n) {
-  for (size_t i = 0; i < n; i++)
-    if ((unsigned char)s[i] == 0)
-      return 0;
-  return 1;
-}

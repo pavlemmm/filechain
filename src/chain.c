@@ -9,6 +9,7 @@
 #include <time.h>
 
 #define DB_DIR ".filechain"
+#define OBJECT_DIR ".filechain/objects"
 #define INDEX_FILE ".filechain/index.txt"
 #define CHAIN_FILE ".filechain/chain.txt"
 
@@ -25,8 +26,11 @@ struct list {
 
 static void ensure_db(void) {
   struct stat st;
+
   if (stat(DB_DIR, &st) != 0)
     mkdir(DB_DIR, 0777);
+  if (stat(OBJECT_DIR, &st) != 0)
+    mkdir(OBJECT_DIR, 0777);
 }
 
 static void push(struct list *list, const char *path, const char *hash) {
@@ -82,8 +86,43 @@ static void last_block_hash(char out[65]) {
   fclose(f);
 }
 
-static void add_block(const char *path, const char *content,
-                      const char *data_hash) {
+static void object_path(char out[PATH_MAX], const char *hash) {
+  snprintf(out, PATH_MAX, "%s/%s", OBJECT_DIR, hash);
+}
+
+static void save_object(const char *path, const char *hash) {
+  FILE *src;
+  FILE *dst;
+  FILE *test;
+  char out[PATH_MAX];
+  char buf[4096];
+  size_t n;
+
+  object_path(out, hash);
+  test = fopen(out, "rb");
+  if (test) {
+    fclose(test);
+    return;
+  }
+
+  src = fopen(path, "rb");
+  dst = fopen(out, "wb");
+  if (!src || !dst) {
+    if (src)
+      fclose(src);
+    if (dst)
+      fclose(dst);
+    return;
+  }
+
+  while ((n = fread(buf, 1, sizeof(buf), src)) > 0)
+    fwrite(buf, 1, n, dst);
+
+  fclose(src);
+  fclose(dst);
+}
+
+static void add_block(const char *path, const char *data_hash) {
   FILE *f = fopen(CHAIN_FILE, "a");
   char stamp[32];
   char prev[65];
@@ -96,8 +135,7 @@ static void add_block(const char *path, const char *content,
 
   last_block_hash(prev);
   strftime(stamp, sizeof(stamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
-  snprintf(meta, sizeof(meta), "%s|%s|%s|%s|%s", stamp, path, data_hash, prev,
-           content);
+  snprintf(meta, sizeof(meta), "%s|%s|%s|%s", stamp, path, data_hash, prev);
   sha256_hex(meta, strlen(meta), block_hash);
 
   fprintf(f, "---\n");
@@ -106,6 +144,7 @@ static void add_block(const char *path, const char *content,
   fprintf(f, "data_hash %s\n", data_hash);
   fprintf(f, "prev_hash %s\n", prev);
   fprintf(f, "block_hash %s\n", block_hash);
+  fprintf(f, "object %s/%s\n", OBJECT_DIR, data_hash);
   fclose(f);
 }
 
@@ -140,7 +179,7 @@ static void scan_dir(const char *dir, struct list *old, struct list *now) {
       continue;
 
     content = read_file(path, &size);
-    if (!content || !is_text(content, size)) {
+    if (!content) {
       free(content);
       continue;
     }
@@ -149,8 +188,10 @@ static void scan_dir(const char *dir, struct list *old, struct list *now) {
     push(now, path, hash);
 
     i = find(old, path);
-    if (i < 0 || strcmp(old->items[i].hash, hash) != 0)
-      add_block(path, content, hash);
+    if (i < 0 || strcmp(old->items[i].hash, hash) != 0) {
+      save_object(path, hash);
+      add_block(path, hash);
+    }
     free(content);
   }
 
@@ -177,7 +218,7 @@ void print_history(const char *filter) {
   int match = !filter;
 
   if (!f) {
-    puts("Nema istorije.");
+    puts("No history");
     return;
   }
 

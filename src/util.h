@@ -9,6 +9,5 @@
 
 void sha256_hex(const void *data, size_t size, char out[65]);
 char *read_file(const char *path, size_t *size);
-int is_text(const char *s, size_t n);
 
 #endif
