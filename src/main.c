@@ -7,6 +7,7 @@ static void usage(const char *prog) {
   printf("Usage:\n");
   printf("  %s scan <folder>\n", prog);
   printf("  %s history [file]\n", prog);
+  printf("  %s restore <file> <hash>\n", prog);
 }
 
 int main(int argc, char **argv) {
@@ -22,6 +23,15 @@ int main(int argc, char **argv) {
   if (strcmp(argv[1], "history") == 0) {
     print_history(argc >= 3 ? argv[2] : NULL);
     return 0;
+  }
+
+  if (strcmp(argv[1], "restore") == 0 && argc >= 4) {
+    if (restore_file(argv[2], argv[3]) == 0) {
+      puts("Restore finished");
+      return 0;
+    }
+    puts("Restore failed");
+    return 1;
   }
 
   puts("Unknown command");
