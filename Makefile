@@ -4,7 +4,7 @@ OPENSSL = $(shell pkg-config --cflags --libs openssl 2>/dev/null || echo -lcrypt
 
 TARGET = filechain
 
-SRC = src/main.c src/chain.c src/util.c
+SRC = src/main.c src/chain.c src/history.c src/storage.c src/util.c
 
 all: $(TARGET)
 
@@ -12,8 +12,7 @@ $(TARGET): $(SRC)
 	$(CC) $(CFLAGS) $(SRC) -o $(TARGET) $(OPENSSL)
 
 run: $(TARGET)
-	./$(TARGET)
+	./$(TARGET) $(ARG)
 
 clean:
-	rm -f $(TARGET)
 	rm -rf .filechain
